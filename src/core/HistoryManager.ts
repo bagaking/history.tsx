@@ -67,10 +67,26 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
     })
   }
 
-  private autoCreateBranch(fromHash: string): string {
+  private autoCreateBranch(fromHash: string, branchEntries?: HistoryEntry<T>[]): string {
     const timestamp = Date.now()
     const branchName = `branch-${timestamp}`
     this.createBranch(branchName, fromHash)
+    
+    // If branch entries are provided, add them to the new branch
+    if (branchEntries && branchEntries.length > 0) {
+      const branch = this.branches.get(branchName)!
+      const updatedEntries = branchEntries.map((entry, index) => ({
+        ...entry,
+        branchName,
+        position: index
+      }))
+      
+      this.branches.set(branchName, {
+        ...branch,
+        entries: updatedEntries
+      })
+    }
+    
     return branchName
   }
 
@@ -81,18 +97,28 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
     // Check if we're inserting mid-history
     const isInsertingMidHistory = this.cursor < branch.entries.length - 1
     
-    let actualBranchName = targetBranchName
     if (isInsertingMidHistory && targetBranchName === this.activeBranchName) {
       const currentEntry = branch.entries[this.cursor]
-      actualBranchName = this.autoCreateBranch(currentEntry?.hash || '')
-      this.switchBranch(actualBranchName)
+      
+      // Extract entries that should be moved to the new branch (from cursor+1 onwards)
+      const branchEntries = branch.entries.slice(this.cursor + 1)
+      
+      // Create new branch with the extracted entries (but stay on main branch)
+      this.autoCreateBranch(currentEntry?.hash || '', branchEntries)
+      
+      // Truncate current branch to keep only entries up to cursor
+      const truncatedEntries = branch.entries.slice(0, this.cursor + 1)
+      this.branches.set(this.activeBranchName, {
+        ...branch,
+        entries: truncatedEntries
+      })
     }
 
-    const targetBranch = this.branches.get(actualBranchName)!
+    const targetBranch = this.branches.get(targetBranchName)!
     const parentHash = targetBranch.entries[targetBranch.entries.length - 1]?.hash
     const position = targetBranch.entries.length
     
-    const entry = this.createEntry(data, actualBranchName, position, parentHash)
+    const entry = this.createEntry(data, targetBranchName, position, parentHash)
     
     // Add metadata if provided
     if (options.metadata) {
@@ -101,7 +127,7 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
 
     // Update branch
     const newEntries = [...targetBranch.entries, entry]
-    this.branches.set(actualBranchName, {
+    this.branches.set(targetBranchName, {
       ...targetBranch,
       entries: newEntries
     })
@@ -111,7 +137,7 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
     
     // Cleanup if needed
     if (this.config.autoCleanup && newEntries.length > this.config.maxEntries) {
-      this.cleanup(actualBranchName)
+      this.cleanup(targetBranchName)
     }
 
     this.emit('record', entry, options.metadata)

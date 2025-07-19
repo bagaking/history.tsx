@@ -1,12 +1,20 @@
 const createBase64Hash = (content: string): string => {
-  // Use Buffer in Node.js environment, btoa in browser
+  // Use Buffer in Node.js environment
   if (typeof Buffer !== 'undefined') {
     return Buffer.from(content).toString('base64')
   } else if (typeof btoa !== 'undefined') {
-    return btoa(content)
+    // In browser environment, handle UTF-8 encoding properly
+    try {
+      // Convert string to UTF-8 bytes first
+      const utf8Content = unescape(encodeURIComponent(content))
+      return btoa(utf8Content)
+    } catch (error) {
+      // Fallback if btoa still fails
+      return content.split('').map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+    }
   } else {
     // Fallback: simple string encoding
-    return content.split('').map(c => c.charCodeAt(0).toString(16)).join('')
+    return content.split('').map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
   }
 }
 

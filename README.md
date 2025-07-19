@@ -29,6 +29,12 @@
 npm install @bagaking/history.tsx
 ```
 
+### Try Demo
+
+```bash
+npm run demo
+```
+
 ### Basic Usage
 
 ```typescript

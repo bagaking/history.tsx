@@ -1,7 +1,7 @@
 {
   "name": "@bagaking/history.tsx",
   "version": "1.0.0",
-  "description": "Universal undo/redo management system for unified data snapshots",
+  "description": "Elegant TypeScript undo/redo management system with branching, time travel, and React integration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -10,11 +10,35 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
     "clean": "rm -rf dist",
-    "demo": "cd examples/demo && pnpm install && pnpm run dev"
+    "prepublishOnly": "npm run clean && npm run build && npm run test",
+    "prepack": "npm run build",
+    "publish:patch": "npm version patch && npm publish",
+    "publish:minor": "npm version minor && npm publish", 
+    "publish:major": "npm version major && npm publish",
+    "release": "npm run prepublishOnly && npm publish",
+    "demo": "cd examples/demo && npm install && npm run dev",
+    "demo:build": "cd examples/demo && npm install && npm run build",
+    "check-types": "tsc --noEmit",
+    "validate": "npm run lint && npm run check-types && npm run test"
   },
-  "keywords": ["undo", "redo", "history", "snapshot", "react", "typescript"],
-  "author": "bagaking",
+  "keywords": [
+    "undo", 
+    "redo", 
+    "history", 
+    "snapshot", 
+    "react", 
+    "typescript",
+    "branching",
+    "time-travel",
+    "state-management",
+    "version-control"
+  ],
+  "author": {
+    "name": "bagaking",
+    "email": "kinghand@foxmail.com"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.0",
@@ -28,18 +52,32 @@
     "typescript": "^5.0.0"
   },
   "peerDependencies": {
-     "react": ">=16.8.0"
-   },
-   "peerDependenciesMeta": {
-     "react": {
-       "optional": true
-     }
+    "react": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/bagaking/history.git"
+    "url": "https://github.com/bagaking/history.tsx.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bagaking/history.tsx/issues"
+  },
+  "homepage": "https://github.com/bagaking/history.tsx#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

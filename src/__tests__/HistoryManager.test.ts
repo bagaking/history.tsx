@@ -91,12 +91,68 @@ describe('UniversalHistoryManager', () => {
       history.undo()
       expect(history.getCurrent()?.data).toEqual(data1)
       
-      // Record new data - should create new branch
+      // Record new data - should create new branch but stay on main
       history.record(data3, { debounce: false })
       
       const state = history.getState()
-      expect(state.activeBranch).not.toBe('main')
+      expect(state.activeBranch).toBe('main')
       expect(history.getCurrent()?.data).toEqual(data3)
+      
+      // Should have created a branch with the displaced entry
+      const branches = Array.from(state.branches.values())
+      expect(branches.length).toBe(2) // main + new branch
+    })
+
+    test('should preserve history when branching from mid-history', () => {
+      // Test scenario: 1 -> 2 -> 3 -> 4 -> 5, cursor at 3, insert 6
+      const data1 = { value: 1 }
+      const data2 = { value: 2 }
+      const data3 = { value: 3 }
+      const data4 = { value: 4 }
+      const data5 = { value: 5 }
+      const data6 = { value: 6 }
+      
+      // Create initial sequence
+      history.record(data1, { debounce: false })
+      history.record(data2, { debounce: false })
+      history.record(data3, { debounce: false })
+      history.record(data4, { debounce: false })
+      history.record(data5, { debounce: false })
+      
+      // Move cursor to position 2 (data3)
+      history.jumpToPosition(2)
+      expect(history.getCurrent()?.data).toEqual(data3)
+      
+      // Record new data - should create branch with preserved history but stay on main
+      history.record(data6, { debounce: false })
+      
+      const state = history.getState()
+      
+      // Should still be on main branch
+      expect(state.activeBranch).toBe('main')
+      
+      // Verify main branch has the new sequence: 1, 2, 3, 6
+      const mainBranch = state.branches.get('main')!
+      expect(mainBranch.entries).toHaveLength(4) // 1, 2, 3, 6
+      expect(mainBranch.entries[0].data).toEqual(data1)
+      expect(mainBranch.entries[1].data).toEqual(data2)
+      expect(mainBranch.entries[2].data).toEqual(data3)
+      expect(mainBranch.entries[3].data).toEqual(data6)
+      
+      // Verify a new branch was created with preserved history: 4, 5
+      const branches = Array.from(state.branches.values())
+      const newBranch = branches.find(b => b.name !== 'main')!
+      expect(newBranch).toBeDefined()
+      expect(newBranch.entries).toHaveLength(2) // 4, 5
+      expect(newBranch.entries[0].data).toEqual(data4)
+      expect(newBranch.entries[1].data).toEqual(data5)
+      
+      // Verify parentHash points to fork position (data3's hash)
+      const data3Hash = mainBranch.entries[2].hash
+      expect(newBranch.parentHash).toBe(data3Hash)
+      
+      // Verify current position is the new entry on main branch
+      expect(history.getCurrent()?.data).toEqual(data6)
     })
   })
 
