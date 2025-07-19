@@ -1,5 +1,5 @@
 // Core universal layer example
-import HistoryManager, { UniversalHistoryManager } from '@bagaking/history.tsx'
+import HistoryManager, { UniversalHistoryManager } from '../dist/core/HistoryManager.js'
 
 // Example 1: Document editing with auto-branching
 interface Document {

@@ -140,3 +140,10 @@ vite.config.ts.timestamp-*
 
 .claude
 CLAUDE.md
+
+# Demo specific (不影响主仓库)
+examples/demo/node_modules/
+examples/demo/dist/
+examples/demo/.vite/
+examples/demo/.env
+examples/demo/.env.local

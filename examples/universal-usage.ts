@@ -1,4 +1,4 @@
-import { UniversalHistoryManager } from '@bagaking/history.tsx'
+import { UniversalHistoryManager } from '../dist/core/HistoryManager.js'
 
 // === Basic Usage ===
 console.log('=== Basic Usage ===')

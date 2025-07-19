@@ -10,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .ts",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "demo": "cd examples/demo && pnpm install && pnpm run dev"
   },
   "keywords": ["undo", "redo", "history", "snapshot", "react", "typescript"],
   "author": "bagaking",
@@ -27,12 +28,12 @@
     "typescript": "^5.0.0"
   },
   "peerDependencies": {
-    "react": ">=16.8.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
+     "react": ">=16.8.0"
+   },
+   "peerDependenciesMeta": {
+     "react": {
+       "optional": true
+     }
   },
   "files": [
     "dist/**/*"

@@ -22,6 +22,10 @@ unified_data 会在本地被更新，也可能会同步到远端和从远端同�
 - 优化
   - Debounce, 未变化的内容不会形成版本、用户的连续操作, 应该 debounce 后合并成一条历史记录
 
+关于 branch 逻辑，举个例子
+- 对于 1 2 3 4 5, 假设游标在 3, 没有 branch，假设现在要插入一项 6
+- main 会变成 1 2 3 6, 而 branch 里头会有 4 5, 这个 branch 里头会记录它的 fork 位置为 3 对应的节点
+
 ## Core Philosophy
 unified_data → snapshot → history → undo/redo
 
