@@ -24,7 +24,17 @@ export const generateHash = (data: any, timestamp: Date, parentHash?: string): s
   return hash.replace(/[+/]/g, (x: string) => x === '+' ? '-' : '_')
 }
 
-export const deepClone = <T>(obj: T): T => JSON.parse(JSON.stringify(obj))
+export const deepClone = <T>(obj: T): T => {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(obj)
+  }
+
+  if (obj === undefined) {
+    return obj
+  }
+
+  return JSON.parse(JSON.stringify(obj)) as T
+}
 
 export const debounce = <T extends any[]>(
   fn: (...args: T) => void,

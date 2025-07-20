@@ -19,6 +19,23 @@ describe('UniversalHistoryManager', () => {
       expect(history.canRedo()).toBe(false)
     })
 
+    test('should record undefined data without throwing', () => {
+      const hash = history.record(undefined, { debounce: false })
+
+      expect(hash).toBeDefined()
+      expect(history.getCurrent()?.data).toBeUndefined()
+    })
+
+    test('should preserve structured clone data types when recording', () => {
+      const createdAt = new Date('2026-01-02T03:04:05.000Z')
+
+      history.record({ createdAt }, { debounce: false })
+
+      const recordedDate = history.getCurrent()?.data.createdAt
+      expect(recordedDate.getTime()).toBe(createdAt.getTime())
+      expect(recordedDate).not.toBe(createdAt)
+    })
+
     test('should handle undo/redo operations', () => {
       const data1 = { value: 'first' }
       const data2 = { value: 'second' }
