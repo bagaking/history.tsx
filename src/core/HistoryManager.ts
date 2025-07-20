@@ -1,7 +1,6 @@
 import {
   HistoryManager,
   HistoryEntry,
-  Branch,
   HistoryState,
   RecordOptions,
   TimeravelOptions,
@@ -11,11 +10,12 @@ import {
   Snapshot
 } from '../types'
 import { generateHash, deepClone, debounce, createEventEmitter } from './utils'
+import { CursorManager } from './CursorManager'
+import { BranchManager } from './BranchManager'
 
 export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
-  private branches = new Map<string, Branch<T>>()
-  private activeBranchName = 'main'
-  private cursor = -1
+  private branchManager = new BranchManager<T>()
+  private cursorManager = new CursorManager<T>()
   private config: Required<HistoryConfig>
   private eventEmitter = createEventEmitter<HistoryEvent<T>>()
   private debouncedRecord?: (data: T, options?: RecordOptions) => void
@@ -28,14 +28,17 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
       autoCleanup: config.autoCleanup ?? true
     }
 
-    // Initialize main branch
-    this.branches.set('main', {
-      name: 'main',
-      entries: [],
-      createdAt: new Date()
-    })
-
     this.setupDebounce()
+  }
+
+  private getCurrentBranch = () => this.branchManager.getCurrentBranch()
+
+  get cursor(): number {
+    return this.cursorManager.getValidatedCursor(this.getCurrentBranch)
+  }
+
+  set cursor(value: number) {
+    this.cursorManager.cursor = value
   }
 
   private setupDebounce(): void {
@@ -67,54 +70,30 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
     })
   }
 
-  private autoCreateBranch(fromHash: string, branchEntries?: HistoryEntry<T>[]): string {
-    const timestamp = Date.now()
-    const branchName = `branch-${timestamp}`
-    this.createBranch(branchName, fromHash)
-    
-    // If branch entries are provided, add them to the new branch
-    if (branchEntries && branchEntries.length > 0) {
-      const branch = this.branches.get(branchName)!
-      const updatedEntries = branchEntries.map((entry, index) => ({
-        ...entry,
-        branchName,
-        position: index
-      }))
-      
-      this.branches.set(branchName, {
-        ...branch,
-        entries: updatedEntries
-      })
-    }
-    
-    return branchName
-  }
-
   private recordImmediate(data: T, options: RecordOptions = {}): string {
-    const branch = this.branches.get(this.activeBranchName)!
-    const targetBranchName = options.branchName || this.activeBranchName
+    const branch = this.branchManager.getCurrentBranch()!
+    const targetBranchName = options.branchName || this.branchManager.getActiveBranchName()
     
     // Check if we're inserting mid-history
     const isInsertingMidHistory = this.cursor < branch.entries.length - 1
     
-    if (isInsertingMidHistory && targetBranchName === this.activeBranchName) {
+    if (isInsertingMidHistory && targetBranchName === this.branchManager.getActiveBranchName()) {
       const currentEntry = branch.entries[this.cursor]
       
       // Extract entries that should be moved to the new branch (from cursor+1 onwards)
       const branchEntries = branch.entries.slice(this.cursor + 1)
       
       // Create new branch with the extracted entries (but stay on main branch)
-      this.autoCreateBranch(currentEntry?.hash || '', branchEntries)
+      this.branchManager.autoCreateBranch(currentEntry?.hash || '', branchEntries)
       
       // Truncate current branch to keep only entries up to cursor
-      const truncatedEntries = branch.entries.slice(0, this.cursor + 1)
-      this.branches.set(this.activeBranchName, {
-        ...branch,
-        entries: truncatedEntries
-      })
+      this.branchManager.truncateBranch(this.branchManager.getActiveBranchName(), this.cursor + 1)
+      
+      // Invalidate cursor as entries structure has changed
+      this.cursorManager.invalidate()
     }
 
-    const targetBranch = this.branches.get(targetBranchName)!
+    const targetBranch = this.branchManager.getBranch(targetBranchName)!
     const parentHash = targetBranch.entries[targetBranch.entries.length - 1]?.hash
     const position = targetBranch.entries.length
     
@@ -125,39 +104,23 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
       (entry as any).metadata = { ...options.metadata }
     }
 
-    // Update branch
-    const newEntries = [...targetBranch.entries, entry]
-    this.branches.set(targetBranchName, {
-      ...targetBranch,
-      entries: newEntries
-    })
+    // Add entry to branch
+    this.branchManager.addEntryToBranch(targetBranchName, entry)
 
-    // Update cursor to point to the new entry
-    this.cursor = newEntries.length - 1
+    // Update cursor to point to the new entry (now at the end)
+    const updatedBranch = this.branchManager.getBranch(targetBranchName)!
+    this.cursor = updatedBranch.entries.length - 1
     
     // Cleanup if needed
-    if (this.config.autoCleanup && newEntries.length > this.config.maxEntries) {
-      this.cleanup(targetBranchName)
+    if (this.config.autoCleanup) {
+      const cleanedCount = this.branchManager.cleanupBranch(targetBranchName, this.config.maxEntries)
+      if (cleanedCount > 0) {
+        this.cursorManager.invalidate()
+      }
     }
 
     this.emit('record', entry, options.metadata)
     return entry.hash
-  }
-
-  private cleanup(branchName: string): void {
-    const branch = this.branches.get(branchName)!
-    const excess = branch.entries.length - this.config.maxEntries
-    
-    if (excess > 0) {
-      const newEntries = branch.entries.slice(excess)
-      this.branches.set(branchName, {
-        ...branch,
-        entries: newEntries
-      })
-      
-      // Adjust cursor
-      this.cursor = Math.max(0, this.cursor - excess)
-    }
   }
 
   record(data: T, options: RecordOptions = {}): string {
@@ -173,7 +136,7 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
     if (!this.canUndo()) return null
     
     this.cursor--
-    const branch = this.branches.get(this.activeBranchName)!
+    const branch = this.branchManager.getCurrentBranch()!
     const entry = branch.entries[this.cursor] || null
     
     this.emit('undo', entry)
@@ -184,7 +147,7 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
     if (!this.canRedo()) return null
     
     this.cursor++
-    const branch = this.branches.get(this.activeBranchName)!
+    const branch = this.branchManager.getCurrentBranch()!
     const entry = branch.entries[this.cursor]
     
     this.emit('redo', entry)
@@ -192,36 +155,32 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
   }
 
   jumpTo(hash: string, options: TimeravelOptions = {}): HistoryEntry<T> | null {
-    for (const [branchName, branch] of this.branches) {
-      const entryIndex = branch.entries.findIndex(e => e.hash === hash)
-      if (entryIndex !== -1) {
-        const entry = branch.entries[entryIndex]
-        
-        if (options.mode === 'branch' && branchName !== this.activeBranchName) {
-          const newBranchName = options.branchName || this.autoCreateBranch(hash)
-          this.switchBranch(newBranchName)
-        } else if (options.mode !== 'readonly') {
-          this.switchBranch(branchName)
-        }
-        
-        this.cursor = entryIndex
-        this.emit('jump', entry, { fromBranch: branchName, mode: options.mode })
-        return entry
-      }
+    const result = this.branchManager.findEntryInAllBranches(hash)
+    if (!result) return null
+    
+    const { entry, branchName, index } = result
+    
+    if (options.mode === 'branch' && branchName !== this.branchManager.getActiveBranchName()) {
+      const newBranchName = options.branchName || this.branchManager.autoCreateBranch(hash)
+      this.switchBranch(newBranchName)
+    } else if (options.mode !== 'readonly') {
+      this.switchBranch(branchName)
     }
     
-    return null
+    this.cursor = index
+    this.emit('jump', entry, { fromBranch: branchName, mode: options.mode })
+    return entry
   }
 
   jumpToPosition(position: number, branchName?: string): HistoryEntry<T> | null {
-    const targetBranch = branchName || this.activeBranchName
-    const branch = this.branches.get(targetBranch)
+    const targetBranch = branchName || this.branchManager.getActiveBranchName()
+    const branch = this.branchManager.getBranch(targetBranch)
     
     if (!branch || position < 0 || position >= branch.entries.length) {
       return null
     }
     
-    if (branchName && branchName !== this.activeBranchName) {
+    if (branchName && branchName !== this.branchManager.getActiveBranchName()) {
       this.switchBranch(branchName)
     }
     
@@ -232,42 +191,27 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
   }
 
   createBranch(name: string, fromHash?: string): boolean {
-    if (this.branches.has(name)) return false
-    
-    let parentHash: string | undefined
-    if (fromHash) {
-      const exists = Array.from(this.branches.values())
-        .some(branch => branch.entries.some(entry => entry.hash === fromHash))
-      if (!exists) return false
-      parentHash = fromHash
+    const success = this.branchManager.createBranch(name, fromHash)
+    if (success) {
+      this.emit('branch-created', null, { branchName: name, parentHash: fromHash })
     }
-
-    this.branches.set(name, {
-      name,
-      entries: [],
-      createdAt: new Date(),
-      parentHash
-    })
-
-    this.emit('branch-created', null, { branchName: name, parentHash })
-    return true
+    return success
   }
 
   switchBranch(name: string): boolean {
-    const branch = this.branches.get(name)
-    if (!branch) return false
-    
-    this.activeBranchName = name
-    this.cursor = Math.min(this.cursor, branch.entries.length - 1)
-    
-    this.emit('branch-switched', this.getCurrent(), { branchName: name })
-    return true
+    const success = this.branchManager.switchBranch(name)
+    if (success) {
+      // Cursor may be invalid for the new branch, invalidate to trigger validation
+      this.cursorManager.invalidate()
+      this.emit('branch-switched', this.getCurrent(), { branchName: name })
+    }
+    return success
   }
 
   query(predicate: (entry: HistoryEntry<T>) => boolean): readonly HistoryEntry<T>[] {
     const results: HistoryEntry<T>[] = []
     
-    for (const branch of this.branches.values()) {
+    for (const branch of this.branchManager.getAllBranches().values()) {
       results.push(...branch.entries.filter(predicate))
     }
     
@@ -275,50 +219,42 @@ export class UniversalHistoryManager<T = any> implements HistoryManager<T> {
   }
 
   getSnapshot(hash: string): Snapshot<T> | null {
-    for (const branch of this.branches.values()) {
-      const entry = branch.entries.find(e => e.hash === hash)
-      if (entry) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { branchName, position, ...snapshot } = entry
-        return snapshot
-      }
+    const result = this.branchManager.findEntryInAllBranches(hash)
+    if (result) {
+      const { entry } = result
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { branchName, position, ...snapshot } = entry
+      return snapshot
     }
     return null
   }
 
   getCurrent(): HistoryEntry<T> | null {
-    const branch = this.branches.get(this.activeBranchName)
+    const branch = this.branchManager.getCurrentBranch()
     return branch?.entries[this.cursor] || null
   }
 
   getState(): HistoryState<T> {
     return {
       current: this.getCurrent(),
-      branches: new Map(this.branches),
-      mainBranch: this.branches.get('main')!,
-      activeBranch: this.activeBranchName,
+      branches: this.branchManager.getAllBranches(),
+      mainBranch: this.branchManager.getBranch('main')!,
+      activeBranch: this.branchManager.getActiveBranchName(),
       cursor: this.cursor
     }
   }
 
   canUndo(): boolean {
-    return this.cursor > 0
+    return this.cursorManager.canUndo(this.getCurrentBranch)
   }
 
   canRedo(): boolean {
-    const branch = this.branches.get(this.activeBranchName)
-    return branch ? this.cursor < branch.entries.length - 1 : false
+    return this.cursorManager.canRedo(this.getCurrentBranch)
   }
 
   clear(): void {
-    this.branches.clear()
-    this.branches.set('main', {
-      name: 'main',
-      entries: [],
-      createdAt: new Date()
-    })
-    this.activeBranchName = 'main'
-    this.cursor = -1
+    this.branchManager.clear()
+    this.cursorManager.reset()
     this.eventEmitter.clear()
   }
 

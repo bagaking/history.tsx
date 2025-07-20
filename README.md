@@ -353,8 +353,11 @@ Based on the principles of:
 - **Flexibility**: Support for complex workflows and branching
 - **Performance**: Optimized for real-world usage patterns
 - **Developer Experience**: Intuitive APIs with excellent TypeScript support
+- **Modular Architecture**: High-cohesion, low-coupling design with specialized managers
 
 The design follows the flow: `unified_data → snapshot → history → undo/redo`, where each step adds structure and capabilities while maintaining simplicity.
+
+**v1.1.0+ Architecture**: The core system now uses a modular approach with `CursorManager` for intelligent cursor validation and `BranchManager` for branch operations, ensuring robust state management with automatic error correction.
 
 ## Contributing 🤝
 

@@ -49,10 +49,8 @@ export const useHistory = <T = any>(options: UseHistoryOptions<T> = {}): UseHist
   if (!managerRef.current) {
     managerRef.current = new UniversalHistoryManager<T>(options)
     
-    // Record initial data if provided
-    if (options.initialData !== undefined) {
-      managerRef.current.record(options.initialData)
-    }
+    // REMOVED: initialData auto-recording to fix undo issues
+    // Let users manually record their first meaningful state
   }
   
   const manager = managerRef.current
