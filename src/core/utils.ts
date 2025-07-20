@@ -29,11 +29,24 @@ export const deepClone = <T>(obj: T): T => {
     return structuredClone(obj)
   }
 
-  if (obj === undefined) {
+  if (obj === null || typeof obj !== 'object') {
     return obj
   }
 
-  return JSON.parse(JSON.stringify(obj)) as T
+  if (obj instanceof Date) {
+    return new Date(obj.getTime()) as T
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepClone(item)) as T
+  }
+
+  const cloned: Record<string, any> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    cloned[key] = deepClone(value)
+  }
+
+  return cloned as T
 }
 
 export const debounce = <T extends any[]>(

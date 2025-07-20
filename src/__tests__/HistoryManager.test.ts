@@ -36,6 +36,41 @@ describe('UniversalHistoryManager', () => {
       expect(recordedDate).not.toBe(createdAt)
     })
 
+    test('should preserve Dates with fallback cloning', () => {
+      const originalStructuredClone = Object.getOwnPropertyDescriptor(globalThis, 'structuredClone')
+      Object.defineProperty(globalThis, 'structuredClone', {
+        value: undefined,
+        configurable: true
+      })
+
+      try {
+        const createdAt = new Date('2026-02-03T04:05:06.000Z')
+        const createdAtTime = createdAt.getTime()
+        const data = {
+          nested: {
+            createdAt,
+            values: [{ count: 1 }]
+          }
+        }
+
+        history.record(data, { debounce: false })
+        data.nested.createdAt.setUTCFullYear(2030)
+        data.nested.values[0].count = 2
+
+        const snapshot = history.getCurrent()?.data
+        expect(snapshot.nested.createdAt).toBeInstanceOf(Date)
+        expect(snapshot.nested.createdAt.getTime()).toBe(createdAtTime)
+        expect(snapshot.nested.createdAt).not.toBe(createdAt)
+        expect(snapshot.nested.values[0].count).toBe(1)
+      } finally {
+        if (originalStructuredClone) {
+          Object.defineProperty(globalThis, 'structuredClone', originalStructuredClone)
+        } else {
+          delete (globalThis as { structuredClone?: typeof structuredClone }).structuredClone
+        }
+      }
+    })
+
     test('should handle undo/redo operations', () => {
       const data1 = { value: 'first' }
       const data2 = { value: 'second' }

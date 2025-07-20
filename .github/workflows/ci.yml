@@ -11,8 +11,11 @@ permissions:
 
 jobs:
   validate:
-    name: Validate
+    name: Validate (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16, 20]
 
     steps:
       - name: Checkout
@@ -26,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
 
       - name: Install dependencies
