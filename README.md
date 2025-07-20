@@ -35,6 +35,17 @@ npm install @bagaking/history.tsx
 npm run demo
 ```
 
+## Development
+
+```bash
+npm install
+npm run validate
+npm run build
+```
+
+`npm run validate` runs linting, type checks, and tests. `npm run build` verifies
+the distributable TypeScript output.
+
 ### Basic Usage
 
 ```typescript
