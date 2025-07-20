@@ -372,7 +372,7 @@ The design follows the flow: `unified_data → snapshot → history → undo/red
 
 ## Contributing 🤝
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome feedback and contributions through GitHub issues and pull requests. A standalone contributing guide has not been split out yet.
 
 ## License 📄
 
