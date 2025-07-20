@@ -11,7 +11,7 @@
 ## Features ✨
 
 - **🌍 Universal**: Works in browser and Node.js environments
-- **⚛️ React Ready**: Dedicated hooks for seamless React integration
+- **⚛️ React Ready**: Dedicated hooks for React integration
 - **🌿 Branching**: Auto-branching when inserting mid-history
 - **🎯 Time Travel**: Jump to any point in history with hash-based navigation
 - **⚡ Debounce**: Built-in debouncing for rapid changes
@@ -19,7 +19,7 @@
 - **🔍 Query**: Powerful querying capabilities
 - **📡 Events**: Real-time event notifications
 - **🎛️ Configurable**: Flexible configuration options
-- **📦 TypeScript**: Full TypeScript support with excellent type inference
+- **📦 TypeScript**: TypeScript declarations and type inference
 
 ## Quick Start 🚀
 
@@ -363,7 +363,7 @@ Based on the principles of:
 - **Predictability**: Deterministic behavior with pure functions
 - **Flexibility**: Support for complex workflows and branching
 - **Performance**: Optimized for real-world usage patterns
-- **Developer Experience**: Intuitive APIs with excellent TypeScript support
+- **Developer Experience**: Intuitive APIs with TypeScript support
 - **Modular Architecture**: High-cohesion, low-coupling design with specialized managers
 
 The design follows the flow: `unified_data → snapshot → history → undo/redo`, where each step adds structure and capabilities while maintaining simplicity.
