@@ -112,6 +112,58 @@ describe('UniversalHistoryManager', () => {
       history.jumpToPosition(2)
       expect(history.getCurrent()?.data).toEqual(entries[2])
     })
+
+    test('should not redo into discarded future after recording mid-history', () => {
+      const data1 = { value: 'first' }
+      const data2 = { value: 'second' }
+      const replacement = { value: 'replacement' }
+
+      history.record(data1, { debounce: false })
+      history.record(data2, { debounce: false })
+      history.undo()
+
+      history.record(replacement, { debounce: false })
+
+      expect(history.getCurrent()?.data).toEqual(replacement)
+      expect(history.canRedo()).toBe(false)
+      expect(history.redo()).toBeNull()
+      expect(history.getCurrent()?.data).toEqual(replacement)
+    })
+
+    test('should debounce rapid records and keep only the latest data', () => {
+      jest.useFakeTimers()
+
+      try {
+        const debouncedHistory = new UniversalHistoryManager<{ value: string }>({
+          debounceDelay: 50
+        })
+        const events: Array<{ type: string; entry: any }> = []
+
+        debouncedHistory.on((event: HistoryEvent<any>) => {
+          events.push({ type: event.type, entry: event.entry })
+        })
+
+        const firstHash = debouncedHistory.record({ value: 'first' })
+        const secondHash = debouncedHistory.record({ value: 'second' })
+
+        expect(firstHash.startsWith('debounced-')).toBe(true)
+        expect(secondHash.startsWith('debounced-')).toBe(true)
+        expect(debouncedHistory.getCurrent()).toBeNull()
+
+        jest.advanceTimersByTime(49)
+        expect(debouncedHistory.getCurrent()).toBeNull()
+
+        jest.advanceTimersByTime(1)
+        expect(debouncedHistory.getCurrent()?.data).toEqual({ value: 'second' })
+        expect(debouncedHistory.canUndo()).toBe(false)
+        expect(debouncedHistory.canRedo()).toBe(false)
+        expect(events).toHaveLength(1)
+        expect(events[0].type).toBe('record')
+        expect(events[0].entry.data).toEqual({ value: 'second' })
+      } finally {
+        jest.useRealTimers()
+      }
+    })
   })
 
   describe('Branch Operations', () => {
