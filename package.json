@@ -21,7 +21,8 @@
     "demo": "cd examples/demo && npm install && npm run dev",
     "demo:build": "cd examples/demo && npm install && npm run build",
     "check-types": "tsc --noEmit",
-    "validate": "npm run lint && npm run check-types && npm run test"
+    "smoke:package-root": "npm run build && node scripts/package-root-smoke.cjs",
+    "validate": "npm run lint && npm run check-types && npm run test && npm run smoke:package-root"
   },
   "keywords": [
     "undo", 

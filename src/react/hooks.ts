@@ -11,10 +11,38 @@ import { UniversalHistoryManager } from '../core/HistoryManager'
 
 type ReactHookRuntime = typeof import('react')
 
+interface ModuleLoadError {
+  code?: unknown
+  message?: unknown
+}
+
+const missingReactPattern = new RegExp("^Cannot find (module|package) ['\"]react['\"]")
+
+const isMissingReactError = (error: unknown): error is ModuleLoadError => {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const { code, message } = error as ModuleLoadError
+  if (typeof message !== 'string') {
+    return false
+  }
+
+  return (
+    code === 'MODULE_NOT_FOUND' ||
+    code === 'ERR_MODULE_NOT_FOUND' ||
+    code === undefined
+  ) && missingReactPattern.test(message)
+}
+
 const getReact = (): ReactHookRuntime => {
   try {
     return require('react') as ReactHookRuntime
-  } catch {
+  } catch (error) {
+    if (!isMissingReactError(error)) {
+      throw error
+    }
+
     throw new Error('@bagaking/history.tsx React hooks require react to be installed')
   }
 }
