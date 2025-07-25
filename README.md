@@ -45,8 +45,9 @@ npx --yes pnpm@7 run build
 
 CI uses pnpm 7, and the lockfile is pinned to pnpm 7's lockfile format. Use
 `pnpm@7` for frozen-lockfile installs; newer pnpm major versions may reject the
-lockfile. `pnpm run validate` runs linting, type checks, and tests.
-`pnpm run build` verifies the distributable TypeScript output.
+lockfile. `pnpm run validate` runs linting, type checks, tests, the workspace
+root package-entry smoke, and a packed tarball consumer smoke. `pnpm run build`
+verifies the distributable TypeScript output.
 
 ### Basic Usage
 
