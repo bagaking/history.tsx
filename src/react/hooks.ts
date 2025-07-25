@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { 
   HistoryManager, 
   HistoryEntry, 
@@ -9,6 +8,16 @@ import {
   HistoryEvent
 } from '../types'
 import { UniversalHistoryManager } from '../core/HistoryManager'
+
+type ReactHookRuntime = typeof import('react')
+
+const getReact = (): ReactHookRuntime => {
+  try {
+    return require('react') as ReactHookRuntime
+  } catch {
+    throw new Error('@bagaking/history.tsx React hooks require react to be installed')
+  }
+}
 
 export interface UseHistoryOptions<T> extends HistoryConfig {
   initialData?: T
@@ -42,6 +51,7 @@ export interface UseHistoryReturn<T> {
 }
 
 export const useHistory = <T = any>(options: UseHistoryOptions<T> = {}): UseHistoryReturn<T> => {
+  const { useCallback, useEffect, useRef, useState } = getReact()
   const managerRef = useRef<HistoryManager<T>>()
   const [, forceUpdate] = useState({})
   
@@ -141,6 +151,7 @@ export interface UseUndoReturn<T> {
 }
 
 export const useUndo = <T = any>(options: UseUndoOptions<T> = {}): UseUndoReturn<T> => {
+  const { useCallback } = getReact()
   const history = useHistory<T>(options)
   
   const record = useCallback((data: T) => {
@@ -183,6 +194,7 @@ export interface UseHistoryStateReturn<T> {
 }
 
 export const useHistoryState = <T = any>(manager: HistoryManager<T>): UseHistoryStateReturn<T> => {
+  const { useCallback, useEffect, useState } = getReact()
   const [, forceUpdate] = useState({})
   
   const triggerUpdate = useCallback(() => {
@@ -219,6 +231,8 @@ export const useHistoryEvents = <T = any>(
   manager: HistoryManager<T>, 
   options: UseHistoryEventOptions<T>
 ): void => {
+  const { useEffect } = getReact()
+
   useEffect(() => {
     const unsubscribe = manager.on((event: HistoryEvent<T>) => {
       switch (event.type) {
