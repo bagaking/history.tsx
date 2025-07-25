@@ -38,12 +38,12 @@ npm run demo
 ## Development
 
 ```bash
-npm install
-npm run validate
-npm run build
+pnpm install --frozen-lockfile
+pnpm run validate
+pnpm run build
 ```
 
-`npm run validate` runs linting, type checks, and tests. `npm run build` verifies
+`pnpm run validate` runs linting, type checks, and tests. `pnpm run build` verifies
 the distributable TypeScript output.
 
 ### Basic Usage
